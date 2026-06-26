@@ -1,816 +1,112 @@
-# Dictatore 2.0 — Project Plan & Deployment Architecture
+# Dictatore
 
+Offline push-to-talk speech-to-text CLI for Linux.
 
-## Vision
+> **Press a key. Speak. Pause. Text appears.**
 
-Dictatore is an offline, keyboard-driven speech-to-text utility for Linux. Inspired by Nerd-dictation (https://github.com/ideasman42/nerd-dictation)
+No cloud, no telemetry, no always-listening mic. Microphone active only during dictation.
 
-It is designed around one principle:
+## Quick Start
 
-> **Press a key. Speak. Release. Your words appear.**
+```bash
+# Dependencies
+pip install vosk
+sudo apt install pipewire-utils xdotool
 
-No cloud services.
+# Download a model
+mkdir -p ~/.local/share/dictatore/models
+# https://alphacephei.com/vosk/models
+mv ~/Downloads/vosk-model-small-en-us-0.15 ~/.local/share/dictatore/models/en-us
 
-No telemetry.
-
-No always-listening microphone.
-
-No desktop environment dependency.
-
-The microphone is only active while the user explicitly requests recording.
-
----
-
-# Goals
-
-## Primary Goals
-
-* Offline speech recognition
-* Desktop environment independent
-* Wayland and X11 support
-* Zero CPU while idle
-* Simple installation
-* Python configurable
-* Small codebase
-* Easily hackable
-
----
-
-## User Modes
-
-### Simple (Default)
-
-No daemon.
-
-Program starts when recording begins.
-
-Program exits after processing.
-
-Advantages
-
-* Zero RAM while idle
-* Zero background processes
-* Extremely simple architecture
-
----
-
-### Fast Mode
-
-Background daemon.
-
-Speech model remains loaded.
-
-Microphone remains disabled.
-
-Advantages
-
-* Instant activation
-* Better for heavy daily use
-
----
-
-# User Workflow
-
-## Tap Mode
-
-Tap hotkey
-
-↓
-
-Begin recording
-
-↓
-
-Silence timeout
-
-↓
-
-Recognize
-
-↓
-
-Process text
-
-↓
-
-Output
-
----
-
-## Push-to-Talk
-
-Hold hotkey
-
-↓
-
-Record
-
-↓
-
-Release key
-
-↓
-
-Recognize
-
-↓
-
-Output
-
----
-
-## Hold Mode
-
-Hold hotkey
-
-↓
-
-Press Hold shortcut
-
-↓
-
-Recording locks
-
-↓
-
-Continue speaking
-
-↓
-
-Press Hold shortcut
-
-↓
-
-Recognize
-
-↓
-
-Output
-
-Suitable for meetings, interviews, lectures and long dictation.
-
----
-
-# Runtime Pipeline
-
-```
-Hotkey
-    │
-    ▼
-Recorder
-    │
-    ▼
-Speech Engine
-    │
-    ▼
-Normalizer
-    │
-    ▼
-Number Parser
-    │
-    ▼
-User Transform
-    │
-    ▼
-Plugins
-    │
-    ▼
-Output Driver
+# Verify
+python -m dictatore doctor
 ```
 
-Overlay listens independently for recognition events.
+## Usage
 
----
-
-# Runtime Components
-
-## CLI
-
-Responsible for installation, diagnostics and configuration.
-
-Commands
-
-```
-dictatore install
-
-dictatore doctor
-
-dictatore config
-
-dictatore models
-
-dictatore daemon
+```bash
+python -m dictatore           # Speak, pause to emit, Ctrl+C to quit
+python -m dictatore doctor    # Verify dependencies and installation
+python -m dictatore config    # Open configuration file
+python -m dictatore models    # List installed models
 ```
 
-Recording is entirely hotkey driven.
+Set `OUTPUT = "stdout"` in config for terminal testing.
 
----
+## Hotkey Setup
 
-## Hotkey Manager
+Bind `dictatore` (or `python -m dictatore`) to a key in your window manager. When pressed, the mic opens and records until you pause speaking.
 
-Responsibilities
-
-* register global shortcut
-* detect press
-* detect release
-* detect hold toggle
-
-Events
-
+**Sway/i3:**
 ```
-key_down
-
-key_up
-
-hold_toggle
+bindsym $mod+d exec dictatore
 ```
 
----
+**KDE:** System Settings → Shortcuts → Custom Shortcuts → New → Global Shortcut → Command/URL
 
-## Recorder
+**GNOME:** Settings → Keyboard → View and Customize Shortcuts → Custom Shortcuts → Add
 
-Abstract audio capture.
+## Configuration
 
-Interface
-
-```
-start(callback)
-
-stop()
-```
-
-Supported backends
-
-* pw-cat
-* parec
-* arecord
-* sox
-
----
-
-## Speech Engine
-
-Responsibilities
-
-* initialize recognizer
-* stream audio
-* emit partial text
-* emit final text
-
-Interface
-
-```
-start()
-
-feed(audio)
-
-stop()
-```
-
-Future engines
-
-* VOSK
-* whisper.cpp
-
----
-
-## Overlay
-
-Subscribes to recognition events.
-
-Receives
-
-```
-partial_text()
-
-final_text()
-```
-
-Responsibilities
-
-* display partial recognition
-* auto-hide
-* never steal focus
-
----
-
-## Text Pipeline
-
-Stages
-
-```
-Normalize
-
-↓
-
-Number Conversion
-
-↓
-
-User transform()
-
-↓
-
-Plugin chain
-
-↓
-
-Output
-```
-
----
-
-## Number Parser
-
-Supports
-
-```
-three hundred
-
-↓
-
-300
-```
-
-```
-two four six eight
-
-↓
-
-2468
-```
-
-```
-three million five hundred sixty second
-
-↓
-
-3,000,562nd
-```
-
-Future
-
-* decimals
-* fractions
-* percentages
-* currencies
-* dates
-* times
-
----
-
-## Output Drivers
-
-```
-Xdotool
-
-Wtype
-
-Stdout
-
-Clipboard
-```
-
----
-
-## Plugin Loader
-
-Search path
-
-```
-~/.config/dictatore/plugins/
-```
-
-Plugin interface
+`~/.config/dictatore/config.py`:
 
 ```python
-def transform(text):
-    return text
+TIMEOUT = 2.5                    # silence threshold (seconds)
+SILENCE_RMS_THRESHOLD = 3000     # raise if mic never stops detecting silence
+MAX_RECORDING_SECONDS = 60       # safety limit
+ENABLE_DIGITS = True
+OUTPUT = "xdotool"               # xdotool | wtype | stdout | clipboard
+MODEL = "en-us"
+RECORDER = "pw-cat"              # pw-cat | parec | arecord
+
+SHOW_OVERLAY = True
+OVERLAY_POSITION = "top-center"
+OVERLAY_FONT_SIZE = 14
+OVERLAY_OPACITY = 0.9
+OVERLAY_WIDTH = 60
 ```
 
-Plugins execute sequentially.
+Optional `transform(text)` hook and `~/.config/dictatore/plugins/*.py` plugins run in filename order after normalization.
 
----
-
-# Event System
-
-Every component communicates using events.
+## Pipeline
 
 ```
-Key Down
-
-↓
-
-Recorder Started
-
-↓
-
-Audio Chunk
-
-↓
-
-Partial Recognition
-
-↓
-
-Overlay Update
-
-↓
-
-Final Recognition
-
-↓
-
-Text Pipeline
-
-↓
-
-Output Driver
-
-↓
-
-Idle
+Recorder → VOSK → Normalize → Number Conversion → transform() → Plugins → Output
 ```
 
-No component directly controls another.
+Overlay shows partial recognition while recording. Output drivers: xdotool (X11), wtype (Wayland), stdout, clipboard.
 
----
-
-# Directory Layout
-
-Repository
+## Package Layout
 
 ```
 dictatore/
-
-├── README.md
-├── LICENSE
-├── pyproject.toml
-├── requirements.txt
-├── install.py
-├── build.sh
-├── package.sh
-├── scripts/
-│
-├── dictatore/
-│   ├── __init__.py
-│   ├── main.py
-│   ├── cli.py
-│   ├── config.py
-│   ├── events.py
-│   ├── state.py
-│   ├── hotkeys.py
-│   ├── recorder.py
-│   ├── recognizer.py
-│   ├── numbers.py
-│   ├── normalize.py
-│   ├── overlay.py
-│   ├── output.py
-│   ├── plugins.py
-│   ├── daemon.py
-│   └── doctor.py
-│
-├── assets/
-│
-├── docs/
-│
-├── examples/
-│
-└── packaging/
+├── main.py          # recording loop
+├── cli.py           # command routing
+├── config.py        # config loading
+├── events.py        # event bus
+├── state.py         # state machine
+├── hotkeys.py       # global shortcut registration
+├── recorder.py      # audio capture (pw-cat / parec / arecord)
+├── recognizer.py    # VOSK speech engine
+├── normalize.py     # text normalization + punctuation from word gaps
+├── numbers.py       # spoken→digit conversion
+├── overlay.py       # floating partial-recognition window
+├── output.py        # output drivers
+├── plugins.py       # plugin loader
+├── daemon.py        # fast mode background process
+└── doctor.py        # diagnostics
 ```
 
-Although internally modular, it can still be bundled into a single executable with PyInstaller or Shiv if desired.
+## Testing
 
----
-
-# User Configuration
-
-```
-~/.config/dictatore/
-
-config.py
-
-plugins/
+```bash
+python -m pytest tests/
 ```
 
-Example
+48 unit tests covering config, events, state machine, normalize, numbers, plugins, output, recorder.
 
-```python
-HOTKEY = "Super+D"
+## How It Works
 
-HOLD_HOTKEY = "Super+Shift+D"
+Dictatore launches, opens the mic, and streams audio to VOSK. When you pause speaking, silence detection triggers after `TIMEOUT` seconds, the recognized text is normalized, numbers are converted, your `transform()` hook and plugins run, and the result is emitted via the chosen output driver. The loop continues until Ctrl+C.
 
-SHOW_OVERLAY = True
-
-OUTPUT = "xdotool"
-
-ENABLE_DIGITS = True
-```
-
----
-
-# Overlay Configuration
-
-```
-SHOW_OVERLAY=True
-
-POSITION="top-center"
-
-FONT_SIZE=14
-
-WIDTH=60
-
-OPACITY=0.9
-```
-
----
-
-# Installer
-
-Interactive installer.
-
-## Step 1
-
-Choose mode
-
-```
-Simple (recommended)
-
-Fast
-```
-
----
-
-## Step 2
-
-Choose audio backend
-
-```
-pw-cat
-
-parec
-
-arecord
-
-sox
-```
-
----
-
-## Step 3
-
-Choose output
-
-```
-xdotool
-
-wtype
-
-stdout
-
-clipboard
-```
-
----
-
-## Step 4
-
-Choose hotkeys
-
-Example
-
-```
-Push-to-talk
-
-Super+D
-```
-
-```
-Hold
-
-Super+Shift+D
-```
-
----
-
-## Step 5
-
-Overlay
-
-```
-Enable overlay?
-
-[Y/n]
-```
-
----
-
-## Step 6
-
-Download model (optional)
-
-Offer language selection.
-
----
-
-# Deployment Strategy
-
-## Development
-
-Run directly from source.
-
-```
-python -m dictatore
-```
-
----
-
-## Standalone Installer
-
-Provide
-
-```
-install.py
-```
-
-Responsibilities
-
-* dependency checks
-* create config
-* install hotkeys
-* install desktop files
-* download language models
-* create daemon service (Fast mode)
-
----
-
-## PyPI
-
-```
-pip install dictatore
-```
-
-Post-install
-
-```
-dictatore install
-```
-
----
-
-## Distribution Packages
-
-Provide native packages.
-
-```
-.deb
-
-.rpm
-
-.pkg.tar.zst
-```
-
----
-
-## Portable Binary
-
-Bundle Python runtime.
-
-Produce
-
-```
-dictatore
-```
-
-Single executable.
-
----
-
-## Source Release
-
-Git clone.
-
-Run
-
-```
-python install.py
-```
-
----
-
-# Release Pipeline
-
-```
-Git Tag
-
-↓
-
-GitHub Release
-
-↓
-
-CI Build
-
-↓
-
-Run Tests
-
-↓
-
-Create Python Wheel
-
-↓
-
-Create Standalone Binary
-
-↓
-
-Build Debian Package
-
-↓
-
-Build RPM
-
-↓
-
-Build Arch Package
-
-↓
-
-Publish Release
-```
-
----
-
-# Testing
-
-## Unit Tests
-
-* number parser
-* normalizer
-* plugin loader
-* event system
-* configuration
-
----
-
-## Integration Tests
-
-* recorder
-* recognizer
-* output drivers
-* overlay
-
----
-
-## Manual Tests
-
-* X11
-* Wayland
-* PipeWire
-* PulseAudio
-* ALSA
-
----
-
-# Future Roadmap
-
-## Version 2.1
-
-* Whisper.cpp backend
-* Multiple language models
-* Overlay themes
-
----
-
-## Version 2.2
-
-* Voice commands
-* Custom vocabularies
-* Macro expansion
-
----
-
-## Version 3.0
-
-* Live punctuation
-* Grammar correction (offline)
-* Local LLM integration
-* Context-aware formatting
-
----
-
-# Design Philosophy
-
-Dictatore should remain a small Unix utility rather than a full desktop assistant.
-
-Its responsibilities are intentionally narrow:
-
-1. Capture speech only when explicitly requested.
-2. Convert speech to text entirely offline.
-3. Allow users to transform that text with simple Python code.
-4. Display optional live feedback while recording.
-5. Deliver the final text to the chosen output destination.
-6. Exit cleanly—or sleep efficiently in Fast mode—without consuming unnecessary resources.
-
-Everything else should be implemented as optional extensions, preserving a fast, understandable, and maintainable core.
+A 1-second emit cooldown prevents duplicate emissions from tail audio. Inter-word gaps from VOSK word timestamps insert commas (>0.3s) and periods (>0.7s) automatically.
