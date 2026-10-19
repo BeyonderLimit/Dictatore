@@ -17,10 +17,15 @@ sudo dnf install pipewire-utils xdotool      # Fedora
 # 2. Install the command itself (provides the `dictatore` executable)
 pip install .
 
-# 3. Download a model (~/.local/share/dictatore/models/en-us)
+# 3. Download models and write a base config (easiest path)
+./scripts/setup.sh
+# installs two models: the fast small one (default) and the larger, more
+# accurate en-us-0.22, and writes ~/.config/dictatore/config.py
+#
+# or manually:
 mkdir -p ~/.local/share/dictatore/models
-# easiest: ./scripts/download-model.sh
-# or manually: download from https://alphacephei.com/vosk/models, then:
+./scripts/download-model.sh          # downloads the accurate 0.22-lgraph model
+# https://alphacephei.com/vosk/models — e.g. small model:
 mv ~/Downloads/vosk-model-small-en-us-0.15 ~/.local/share/dictatore/models/en-us
 
 # 4. Verify
