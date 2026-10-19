@@ -5,14 +5,14 @@
 ## Quick Start
 
 ```bash
-pip install vosk
-sudo apt install pipewire-bin xdotool        # Debian/Ubuntu
+sudo apt install pipewire-bin xdotool python3-venv   # Debian/Ubuntu
 sudo dnf install pipewire-utils xdotool      # Fedora
 
-# Download a VOSK model
-mkdir -p ~/.local/share/dictatore/models
-# https://alphacephei.com/vosk/models — e.g. vosk-model-small-en-us-0.15
-mv ~/Downloads/vosk-model-* ~/.local/share/dictatore/models/en-us
+# Install into a managed venv + create the `dictatore` command (PEP 668-safe)
+./scripts/install.sh
+
+# Download two models + write a base config
+./scripts/setup.sh
 
 dictatore doctor       # verify setup
 ```

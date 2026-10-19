@@ -9,14 +9,13 @@ No cloud, no telemetry, no always-listening mic. Microphone active only during d
 ## Quick Start
 
 ```bash
-# 1. Dependencies
-pip install vosk
-sudo apt install pipewire-bin xdotool        # Debian/Ubuntu (pw-cat lives in pipewire-bin)
-sudo dnf install pipewire-utils xdotool      # Fedora
+# 1. System dependencies
+sudo apt install pipewire-bin xdotool python3-venv      # Debian/Ubuntu
+# sudo dnf install pipewire-utils xdotool                # Fedora
 
-# 2. Install the command itself (provides the `dictatore` executable)
-pip install .
-pip install webrtcvad-wheels     # optional but recommended; see VAD below
+# 2. Install into a managed venv and put `dictatore` on PATH
+#    (Debian 12+ blocks system-wide pip — PEP 668 — install.sh handles it)
+./scripts/install.sh
 
 # 3. Download models and write a base config (easiest path)
 ./scripts/setup.sh
@@ -30,7 +29,8 @@ mkdir -p ~/.local/share/dictatore/models
 mv ~/Downloads/vosk-model-small-en-us-0.15 ~/.local/share/dictatore/models/en-us
 
 # 4. Verify
-dictatore doctor        # or: python -m dictatore doctor
+dictatore doctor
+# (or: ~/.local/share/dictatore/venv/bin/python -m dictatore doctor)
 ```
 
 ## Usage
@@ -47,6 +47,8 @@ Set `OUTPUT = "stdout"` in config for terminal testing.
 ## Hotkey Setup
 
 Bind `dictatore` (or `python -m dictatore`) to a key in your window manager. When pressed, the mic opens and records until you pause speaking.
+
+`scripts/install.sh` places the command in `~/.local/bin/dictatore` (on the default PATH in Debian/Ubuntu desktops). Desktop shortcut tools resolve commands from the session PATH as it was at login, so log out/in once after installing — or bind the absolute path `~/.local/bin/dictatore` in the shortcut.
 
 **Sway/i3:**
 ```
@@ -149,5 +151,6 @@ A 0.5-second emit cooldown prevents duplicate emissions from tail audio. Inter-w
 - **Output driver not found** — `xdotool` for X11, `wtype` for Wayland; use `OUTPUT = "stdout"` for testing.
 - **pactl not installed** — informational only; the audio-server check is skipped and dictation still works.
 - **Overlay doesn't appear** — tkinter is required (`sudo apt install python3-tk` on Debian/Ubuntu), or set `SHOW_OVERLAY = False`.
+- **`error: externally-managed-environment`** — Debian 12+ blocks system-wide `pip`. Don't use `--break-system-packages`; run `./scripts/install.sh`, which installs into `~/.local/share/dictatore/venv` and puts `dictatore` in `~/.local/bin`.
 - **Word beginnings/endings clipped** — lower `VAD_AGGRESSIVENESS` (3 → 2 or 1), or set `VAD = "off"` to compare.
 - **Breath still produces phantom words** — confirm `VAD` is not `"off"`, keep `VAD_AGGRESSIVENESS` at 3, and lower the microphone gain: clipping mic input (RMS near 32768) makes even strict VAD read noise as speech.
