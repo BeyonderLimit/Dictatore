@@ -71,6 +71,9 @@ def _check_output(name: str) -> list[str]:
 
 def _check_pipewire() -> list[str]:
     issues: list[str] = []
+    if shutil.which("pactl") is None:
+        issues.append("pactl not installed (pulseaudio-utils) — skipping audio-server check")
+        return issues
     result = subprocess.run(
         ["pactl", "info"],
         capture_output=True, text=True, check=False,

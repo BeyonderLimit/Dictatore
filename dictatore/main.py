@@ -3,7 +3,6 @@ from __future__ import annotations
 import math
 import struct
 import sys
-import threading
 import time
 from typing import Callable
 
@@ -77,7 +76,7 @@ def _run_recording() -> None:
     recognizer.start(partial_callback=on_partial, final_callback=on_final)
 
     def audio_callback(chunk: bytes) -> None:
-        nonlocal partial_text, finals, silence_start, cooldown_until
+        nonlocal partial_text, finals, silence_start, cooldown_until, overlay_text
         recognizer.feed(chunk)
         now = time.monotonic()
         if now < cooldown_until:
@@ -111,11 +110,9 @@ def _run_recording() -> None:
 
     recorder.start(callback=audio_callback)
 
-    stop_event = threading.Event()
     try:
         while True:
-            if stop_event.wait(timeout=0.1):
-                break
+            time.sleep(0.1)
             if show_overlay and overlay_text:
                 overlay.update_text(overlay_text)
     except KeyboardInterrupt:

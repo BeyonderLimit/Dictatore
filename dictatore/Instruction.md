@@ -6,8 +6,8 @@
 
 ```bash
 pip install vosk
-sudo apt install pipewire-utils xdotool   # Debian/Ubuntu
-sudo dnf install pipewire-utils xdotool   # Fedora
+sudo apt install pipewire-bin xdotool        # Debian/Ubuntu
+sudo dnf install pipewire-utils xdotool      # Fedora
 
 # Download a VOSK model
 mkdir -p ~/.local/share/dictatore/models
@@ -19,19 +19,18 @@ dictatore doctor       # verify setup
 
 ## Usage
 
-| Mode | Action | Best for |
-|---|---|---|
-| **Tap** | Tap the hotkey. Speak. Silence stops recording. | Short sentences |
-| **Push-to-Talk** | Hold the hotkey. Speak. Release. | Normal dictation |
-| **Hold Lock** | Start Push-to-Talk, press hold shortcut. Recording locks. Press hold shortcut again to stop. | Long dictation, meetings |
+Dictation runs until you pause speaking, then the recognized text is emitted. Bind `dictatore` to a key in your window manager, or run it from a terminal.
 
-While recording, a small overlay shows partial recognition in real time. It disappears on release — only the final text is typed.
+While recording, a small overlay shows partial recognition in real time. Overlay disappears on emit — only the final text is typed.
+
+> Tap / Push-to-Talk / Hold Lock modes are documented for a future release and
+> are not implemented in v2.0.
 
 ## Commands
 
 | Command | Action |
 |---|---|
-| `dictatore` | Hotkey entry point. Tap = silence-detect. Hold = push-to-talk. |
+| `dictatore` | Launch continuous dictation — speak, pause to emit, Ctrl+C to quit. |
 | `dictatore daemon` | Start background daemon (Fast mode — pre-loads model) |
 | `dictatore doctor` | Verify dependencies, model, backends, permissions |
 | `dictatore models` | List installed models |
@@ -50,7 +49,7 @@ MAX_RECORDING_SECONDS = 60         # safety limit
 ENABLE_DIGITS = True
 OUTPUT = "xdotool"                 # xdotool | wtype | stdout | clipboard
 MODEL = "en-us"
-RECORDER = "pw-cat"                # pw-cat | parec | arecord | sox
+RECORDER = "pw-cat"                # pw-cat | parec | arecord
 
 SHOW_OVERLAY = True
 OVERLAY_POSITION = "top-center"
@@ -95,4 +94,8 @@ bindsym Mod4+d exec dictatore
 ## Simple vs Fast Mode
 
 - **Simple (default):** no daemon, zero RAM idle, model loads on demand.
-- **Fast:** `dictatore daemon` keeps model in memory for instant activation. Same hotkey UX.
+- **Fast:** `dictatore daemon` pre-loads the model and serves JSON requests
+  (newline-terminated) on `~/.local/share/dictatore/daemon.sock` — actions:
+  `recognize` (send raw s16le 16 kHz mono audio as hex), `result`, `quit`. It
+  is currently a server API — it is not yet integrated with the hotkey launch
+  path.

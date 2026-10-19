@@ -39,26 +39,60 @@ class Daemon:
 
         while self._running:
             conn, _ = self._server.accept()
-            data = conn.recv(4096)
-            if data:
-                try:
-                    msg = json.loads(data.decode())
-                    self._handle(msg, conn)
-                except (json.JSONDecodeError, KeyError):
+            try:
+                msg = self._recv_json(conn)
+                if msg is None:
                     conn.sendall(json.dumps({"error": "invalid message"}).encode())
-            conn.close()
+                else:
+                    self._handle(msg, conn)
+            except OSError:
+                # Client hung up mid-request (broken pipe / reset): a single
+                # bad client must not take down the daemon.
+                pass
+            finally:
+                conn.close()
+
+    def _recv_json(self, conn: socket.socket) -> dict | None:
+        """Read one newline-terminated JSON message. Large audio payloads are
+        fine as long as they are a single line ending in '\n'. Returns None on
+        disconnect, decode error, or oversized message."""
+        MAX_MESSAGE = 10 * 1024 * 1024  # ~1.2 h of raw 16 kHz s16 mono (hex)
+        buf = b""
+        while b"\n" not in buf:
+            chunk = conn.recv(65536)
+            if not chunk:
+                break
+            buf += chunk
+            if len(buf) > MAX_MESSAGE:
+                return None
+        line = buf.split(b"\n", 1)[0] if buf else b""
+        if not line.strip():
+            return None
+        try:
+            return json.loads(line.decode())
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            return None
 
     def _handle(self, msg: dict, conn: socket.socket) -> None:
         action = msg.get("action")
         if action == "recognize":
-            audio = bytes.fromhex(msg.get("audio", ""))
+            try:
+                audio = bytes.fromhex(msg.get("audio", ""))
+            except ValueError:
+                conn.sendall(json.dumps({"error": "invalid audio hex"}).encode())
+                return
             if self._recognizer:
                 self._recognizer.feed(audio)
             conn.sendall(json.dumps({"status": "ok"}).encode())
         elif action == "result":
             if self._recognizer:
                 text = self._recognizer.stop()
+                # Restart so the daemon keeps serving requests; the model
+                # itself stays loaded in memory.
+                self._recognizer.start()
                 conn.sendall(json.dumps({"text": text}).encode())
+            else:
+                conn.sendall(json.dumps({"error": "recognizer not started"}).encode())
         elif action == "quit":
             self._running = False
             conn.sendall(json.dumps({"status": "ok"}).encode())

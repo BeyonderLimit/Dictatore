@@ -9,26 +9,31 @@ No cloud, no telemetry, no always-listening mic. Microphone active only during d
 ## Quick Start
 
 ```bash
-# Dependencies
+# 1. Dependencies
 pip install vosk
-sudo apt install pipewire-utils xdotool
+sudo apt install pipewire-bin xdotool        # Debian/Ubuntu (pw-cat lives in pipewire-bin)
+sudo dnf install pipewire-utils xdotool      # Fedora
 
-# Download a model
+# 2. Install the command itself (provides the `dictatore` executable)
+pip install .
+
+# 3. Download a model (~/.local/share/dictatore/models/en-us)
 mkdir -p ~/.local/share/dictatore/models
-# https://alphacephei.com/vosk/models
+# easiest: ./scripts/download-model.sh
+# or manually: download from https://alphacephei.com/vosk/models, then:
 mv ~/Downloads/vosk-model-small-en-us-0.15 ~/.local/share/dictatore/models/en-us
 
-# Verify
-python -m dictatore doctor
+# 4. Verify
+dictatore doctor        # or: python -m dictatore doctor
 ```
 
 ## Usage
 
 ```bash
-python -m dictatore           # Speak, pause to emit, Ctrl+C to quit
-python -m dictatore doctor    # Verify dependencies and installation
-python -m dictatore config    # Open configuration file
-python -m dictatore models    # List installed models
+dictatore           # Speak, pause to emit, Ctrl+C to quit
+dictatore doctor    # Verify dependencies and installation
+dictatore config    # Open configuration file
+dictatore models    # List installed models
 ```
 
 Set `OUTPUT = "stdout"` in config for terminal testing.
@@ -85,7 +90,7 @@ dictatore/
 ├── config.py        # config loading
 ├── events.py        # event bus
 ├── state.py         # state machine
-├── hotkeys.py       # global shortcut registration
+├── hotkeys.py       # global shortcut handling (reserved; not used by the main loop)
 ├── recorder.py      # audio capture (pw-cat / parec / arecord)
 ├── recognizer.py    # VOSK speech engine
 ├── normalize.py     # text normalization + punctuation from word gaps
@@ -100,13 +105,26 @@ dictatore/
 ## Testing
 
 ```bash
-python -m pytest tests/
+pip install -e ".[test]"     # or: python -m pip install pytest
+python -m pytest tests/ -q
 ```
 
-48 unit tests covering config, events, state machine, normalize, numbers, plugins, output, recorder.
+43 unit tests covering config, events, the state machine, normalize, numbers, plugins, output, and recorder.
+
+The recognizer, overlay, daemon, and main recording loop require vosk/tkinter plus a model; use the Quick Start steps and `dictatore doctor` to verify those.
 
 ## How It Works
 
 Dictatore launches, opens the mic, and streams audio to VOSK. When you pause speaking, silence detection triggers after `TIMEOUT` seconds, the recognized text is normalized, numbers are converted, your `transform()` hook and plugins run, and the result is emitted via the chosen output driver. The loop continues until Ctrl+C.
 
-A 1-second emit cooldown prevents duplicate emissions from tail audio. Inter-word gaps from VOSK word timestamps insert commas (>0.3s) and periods (>0.7s) automatically.
+A 0.5-second emit cooldown prevents duplicate emissions from tail audio. Inter-word gaps from VOSK word timestamps insert commas (>0.3s) and periods (>0.7s) automatically.
+
+## Troubleshooting
+
+`dictatore doctor` reports what's missing; exit code is non-zero when anything required is unfixed:
+
+- **No model found** — download per Quick Start, or set `MODEL = "<dir-name>"` in config to match the directory you extracted.
+- **Recording backend not found** — install `pipewire-bin` (Debian/Ubuntu) or `pipewire-utils` (Fedora) for `pw-cat`, `pulseaudio-utils` for `parec`, or `alsa-utils` for `arecord`; set `RECORDER` to match what you install.
+- **Output driver not found** — `xdotool` for X11, `wtype` for Wayland; use `OUTPUT = "stdout"` for testing.
+- **pactl not installed** — informational only; the audio-server check is skipped and dictation still works.
+- **Overlay doesn't appear** — tkinter is required (`sudo apt install python3-tk` on Debian/Ubuntu), or set `SHOW_OVERLAY = False`.

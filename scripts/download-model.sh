@@ -7,9 +7,17 @@ MODELS_DIR="${HOME}/.local/share/dictatore/models"
 TARGET_DIR="${MODELS_DIR}/en-us"
 TMPDIR="$(mktemp -d)"
 
-if [ -d "$TARGET_DIR" ] && [ -f "$TARGET_DIR/am" ]; then
+trap 'rm -rf "$TMPDIR"' EXIT
+
+for tool in wget unzip; do
+    if ! command -v "$tool" >/dev/null; then
+        echo "Error: required tool '$tool' not found in PATH" >&2
+        exit 1
+    fi
+done
+
+if [ -d "$TARGET_DIR/am" ]; then
     echo "Model already exists at $TARGET_DIR"
-    rm -rf "$TMPDIR"
     exit 0
 fi
 
@@ -24,12 +32,9 @@ unzip -q "$TMPDIR/model.zip" -d "$TMPDIR"
 EXTRACTED=$(find "$TMPDIR" -maxdepth 1 -type d -name "${MODEL_NAME}*" | head -1)
 if [ -z "$EXTRACTED" ]; then
     echo "Error: expected extracted directory not found" >&2
-    rm -rf "$TMPDIR"
     exit 1
 fi
 
-mkdir -p "$MODELS_DIR"
 mv "$EXTRACTED" "$TARGET_DIR"
 
-rm -rf "$TMPDIR"
 echo "Model installed at $TARGET_DIR"
