@@ -15,6 +15,7 @@ from dictatore.overlay import Overlay
 from dictatore.plugins import load_plugins, run_plugins
 from dictatore.recorder import get_recorder
 from dictatore.recognizer import Recognizer
+from dictatore.transcript import append as append_transcript, resolve_path
 from dictatore.vad import SpeechGate, get_vad
 
 
@@ -39,6 +40,9 @@ def _process_and_emit(
         text = transform_fn(text)
     text = run_plugins(text, load_plugins())
     output.emit(text)
+    transcript_file = resolve_path(cfg.get("TRANSCRIPT_FILE"))
+    if transcript_file:
+        append_transcript(transcript_file, text)
 
 
 def _run_recording() -> None:

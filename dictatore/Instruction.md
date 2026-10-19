@@ -23,6 +23,10 @@ Dictation runs until you pause speaking, then the recognized text is emitted. Bi
 
 While recording, a small overlay shows partial recognition in real time. Overlay disappears on emit — only the final text is typed.
 
+Every emitted utterance is appended to a local transcript file
+(`~/.local/share/dictatore/transcript.txt`). Delete it any time; nothing is
+transmitted anywhere.
+
 > Tap / Push-to-Talk / Hold Lock modes are documented for a future release and
 > are not implemented in v2.0.
 
@@ -53,6 +57,7 @@ RECORDER = "pw-cat"                # pw-cat | parec | arecord
 
 VAD = "webrtc"                     # webrtc | rms | off — gates breath/noise before VOSK
 VAD_AGGRESSIVENESS = 3             # 0 lenient .. 3 strict; raise if breath still passes
+TRANSCRIPT_FILE = "~/.local/share/dictatore/transcript.txt"  # set to None to disable
 
 SHOW_OVERLAY = True
 OVERLAY_POSITION = "top-center"

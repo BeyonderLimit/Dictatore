@@ -81,6 +81,7 @@ RECORDER = "pw-cat"                # pw-cat | parec | arecord
 
 VAD = "webrtc"                     # webrtc | rms | off (off feeds all audio)
 VAD_AGGRESSIVENESS = 3             # 0 lenient .. 3 strict; raise if breath still passes
+TRANSCRIPT_FILE = "~/.local/share/dictatore/transcript.txt"   # set to None to disable
 
 SHOW_OVERLAY = True
 OVERLAY_POSITION = "top-center"

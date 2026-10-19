@@ -8,6 +8,7 @@ CONFIG_DIR = Path.home() / ".config" / "dictatore"
 CONFIG_PATH = CONFIG_DIR / "config.py"
 PLUGINS_DIR = CONFIG_DIR / "plugins"
 MODELS_DIR = Path.home() / ".local" / "share" / "dictatore" / "models"
+TRANSCRIPT_FILE_DEFAULT = "~/.local/share/dictatore/transcript.txt"
 
 DEFAULT_CONFIG: dict[str, Any] = {
     "HOTKEY": "Super+D",
@@ -20,6 +21,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "RECORDER": "pw-cat",
     "VAD": "webrtc",
     "VAD_AGGRESSIVENESS": 3,
+    "TRANSCRIPT_FILE": TRANSCRIPT_FILE_DEFAULT,
     "SHOW_OVERLAY": True,
     "OVERLAY_POSITION": "top-center",
     "OVERLAY_FONT_SIZE": 14,

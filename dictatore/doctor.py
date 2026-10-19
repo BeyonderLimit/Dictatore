@@ -105,6 +105,15 @@ def _check_pipewire() -> list[str]:
     return issues
 
 
+def _check_transcript(cfg: dict) -> str:
+    from dictatore.transcript import resolve_path
+
+    path = resolve_path(cfg.get("TRANSCRIPT_FILE"))
+    if path is None:
+        return "Transcript: disabled (set TRANSCRIPT_FILE to enable)"
+    return f"Transcript: local log {path}"
+
+
 def run() -> list[str]:
     issues: list[str] = []
 
@@ -118,6 +127,7 @@ def run() -> list[str]:
     issues.append(f"Hotkey: {cfg.get('HOTKEY', 'Super+D')}")
     issues.extend(_check_recorder(cfg.get("RECORDER", "pw-cat")))
     issues.extend(_check_output(cfg.get("OUTPUT", "xdotool")))
+    issues.append(_check_transcript(cfg))
 
     config_dir_ok = CONFIG_DIR.is_dir()
     issues.append(f"Config dir: {CONFIG_DIR} {'exists' if config_dir_ok else 'not found'}")

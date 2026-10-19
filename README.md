@@ -74,6 +74,7 @@ RECORDER = "pw-cat"              # pw-cat | parec | arecord
 
 VAD = "webrtc"                   # webrtc | rms | off (off feeds all audio)
 VAD_AGGRESSIVENESS = 3           # 0 lenient .. 3 strict; raise if breath still passes
+TRANSCRIPT_FILE = "~/.local/share/dictatore/transcript.txt"
 
 SHOW_OVERLAY = True
 OVERLAY_POSITION = "top-center"
@@ -94,6 +95,17 @@ so word onsets and endings survive.
 - `VAD = "webrtc"` — Google's WebRTC VAD (needs `pip install webrtcvad-wheels`); strictest and recommended. `VAD_AGGRESSIVENESS` 0–3; **3** is most strict (recommended default — raise it if breath still slips through, lower it if words start getting clipped).
 - `VAD = "rms"` — pure‑Python energy gate using `SILENCE_RMS_THRESHOLD`; no extra dependency, less reliable on noisy rooms.
 - `VAD = "off"` — no gating; phantom words may re-appear.
+
+### Where your dictation is saved
+
+Every emission is appended, one timestamped line each, to
+`~/.local/share/dictatore/transcript.txt` (configurable via
+`TRANSCRIPT_FILE`; set it to `None` or `""` to disable logging). This is the
+only place dictated text is stored: it happens locally, audio is never
+written to disk, and nothing is transmitted anywhere. Delete the file or its
+contents whenever you want — no history is kept anywhere else. If the target
+input method types into an app (xdotool/wtype), that app's own save behavior
+is separate from this log.
 
 ## Pipeline
 
