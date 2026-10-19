@@ -69,6 +69,26 @@ def _check_output(name: str) -> list[str]:
     return issues
 
 
+def _check_vad(name: str) -> list[str]:
+    issues: list[str] = []
+    if name == "off":
+        issues.append("VAD: disabled — webrtcvad may reduce phantom 'the' words")
+    elif name == "webrtc":
+        try:
+            import webrtcvad
+
+            issues.append(f"VAD: webrtc (webrtcvad {getattr(webrtcvad, '__version__', '?')})")
+        except ImportError:
+            issues.append(
+                "VAD: rms fallback (pip install webrtcvad-wheels enables webrtc VAD)"
+            )
+    elif name == "rms":
+        issues.append("VAD: rms")
+    else:
+        issues.append(f"VAD backend '{name}' invalid (must be webrtc | rms | off)")
+    return issues
+
+
 def _check_pipewire() -> list[str]:
     issues: list[str] = []
     if shutil.which("pactl") is None:
@@ -94,6 +114,7 @@ def run() -> list[str]:
     issues.extend(_check_pipewire())
 
     cfg, _ = load_config()
+    issues.extend(_check_vad(cfg.get("VAD", "webrtc")))
     issues.append(f"Hotkey: {cfg.get('HOTKEY', 'Super+D')}")
     issues.extend(_check_recorder(cfg.get("RECORDER", "pw-cat")))
     issues.extend(_check_output(cfg.get("OUTPUT", "xdotool")))

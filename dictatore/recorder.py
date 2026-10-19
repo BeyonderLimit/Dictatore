@@ -57,6 +57,14 @@ class _SubprocessRecorder(Recorder):
                 self._process.kill()
                 self._process.wait()
             self._process = None
+        if self._thread is not None:
+            # The reader thread may still be inside callback() (e.g.
+            # recognizer.feed from the last chunk, EOF may follow after the
+            # pipe drains). Terminating the recorder while that callback is
+            # in flight would leave the recognizer torn down while another
+            # thread uses it — join so callers own the recognizer again.
+            self._thread.join(timeout=5)
+            self._thread = None
 
     def wait(self) -> None:
         if self._thread is not None:

@@ -18,6 +18,8 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "OUTPUT": "xdotool",
     "MODEL": "en-us",
     "RECORDER": "pw-cat",
+    "VAD": "webrtc",
+    "VAD_AGGRESSIVENESS": 3,
     "SHOW_OVERLAY": True,
     "OVERLAY_POSITION": "top-center",
     "OVERLAY_FONT_SIZE": 14,

@@ -15,6 +15,7 @@ from dictatore.overlay import Overlay
 from dictatore.plugins import load_plugins, run_plugins
 from dictatore.recorder import get_recorder
 from dictatore.recognizer import Recognizer
+from dictatore.vad import SpeechGate, get_vad
 
 
 def _rms(chunk: bytes) -> float:
@@ -55,6 +56,21 @@ def _run_recording() -> None:
     threshold = cfg.get("SILENCE_RMS_THRESHOLD", 3000)
     show_overlay = cfg.get("SHOW_OVERLAY", True)
 
+    vad_name = cfg.get("VAD", "webrtc")
+    gate = None
+    if vad_name == "off":
+        print(
+            "VAD disabled — VOSK receives all audio"
+            " (may hallucinate 'the' on breath noise)",
+            file=sys.stderr,
+        )
+    else:
+        try:
+            vad = get_vad(vad_name, threshold, cfg.get("VAD_AGGRESSIVENESS", 3))
+            gate = SpeechGate(vad)
+        except ValueError as exc:
+            print(f"VAD disabled — {exc}", file=sys.stderr)
+
     overlay = Overlay(None, cfg)
     partial_text = ""
     finals: list[str] = []
@@ -77,33 +93,44 @@ def _run_recording() -> None:
 
     def audio_callback(chunk: bytes) -> None:
         nonlocal partial_text, finals, silence_start, cooldown_until, overlay_text
-        recognizer.feed(chunk)
         now = time.monotonic()
+
+        # VAD: only speech (+ pre-roll / hangover tail) reaches VOSK so
+        # breath and background noise cannot be hallucinated into text.
+        if gate is not None:
+            to_feed, is_speech = gate.process(chunk)
+        else:
+            to_feed, is_speech = [chunk], _rms(chunk) >= threshold
+        for part in to_feed:
+            recognizer.feed(part)
+
+        if is_speech:
+            silence_start = None
+        elif silence_start is None:
+            silence_start = now
+
         if now < cooldown_until:
             return
-        if _rms(chunk) < threshold:
-            if silence_start is None:
-                silence_start = now
-            elif now - silence_start >= timeout:
-                to_emit = " ".join(finals)
-                remaining = recognizer.reset()
-                if remaining:
-                    to_emit = to_emit + " " + remaining if to_emit else remaining
-                elif not to_emit:
-                    to_emit = partial_text
-                if to_emit:
-                    finals.clear()
-                    partial_text = ""
-                    _process_and_emit(to_emit, cfg, transform_fn, output)
-                    print(f"\r\x1b[K\u2192 {to_emit}", file=sys.stderr)
-                    print("Listening...", file=sys.stderr, end="", flush=True)
-                    overlay_text = ""
-                    cooldown_until = now + 0.5
-                silence_start = None
-        else:
+        if silence_start is not None and now - silence_start >= timeout:
+            to_emit = " ".join(finals)
+            remaining = recognizer.reset()
+            if remaining:
+                to_emit = to_emit + " " + remaining if to_emit else remaining
+            elif not to_emit:
+                to_emit = partial_text
+            if to_emit:
+                finals.clear()
+                partial_text = ""
+                _process_and_emit(to_emit, cfg, transform_fn, output)
+                print(f"\r\x1b[K\u2192 {to_emit}", file=sys.stderr)
+                print("Listening...", file=sys.stderr, end="", flush=True)
+                overlay_text = ""
+                cooldown_until = now + 0.5
             silence_start = None
 
     print("Listening... (speak; pause to emit; Ctrl+C to quit)", file=sys.stderr)
+    if gate is not None:
+        print(f"VAD: {vad_name} — breath/noise filtered before VOSK", file=sys.stderr)
 
     if show_overlay:
         overlay.show()

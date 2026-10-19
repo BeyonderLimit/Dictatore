@@ -51,6 +51,9 @@ OUTPUT = "xdotool"                 # xdotool | wtype | stdout | clipboard
 MODEL = "en-us"
 RECORDER = "pw-cat"                # pw-cat | parec | arecord
 
+VAD = "webrtc"                     # webrtc | rms | off — gates breath/noise before VOSK
+VAD_AGGRESSIVENESS = 3             # 0 lenient .. 3 strict; raise if breath still passes
+
 SHOW_OVERLAY = True
 OVERLAY_POSITION = "top-center"
 OVERLAY_FONT_SIZE = 14

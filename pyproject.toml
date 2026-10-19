@@ -13,6 +13,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+vad = [
+    "webrtcvad-wheels>=2.0.10",
+]
 test = [
     "pytest>=7",
     "pytest-cov",
